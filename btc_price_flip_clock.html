@@ -1,0 +1,203 @@
+
+	<!DOCTYPE html>
+	<html lang="zh-CN">
+	<head>
+	    <meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	    <title>BTC 机械翻页时钟</title>
+	    <!-- 引入 FlipClock CSS -->
+	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
+	    <style>
+	        /* === 1. 页面基础布局 === */
+	        body {
+	            background-color: #111;
+	            margin: 0;
+	            padding: 0;
+	            height: 100vh;
+	            width: 100vw;
+	            overflow: hidden;
+	            display: flex;
+	            justify-content: center;
+	            align-items: center;
+	            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	            background: radial-gradient(circle at center, #222 0%, #000 100%);
+	        }
+	        /* 标题样式 */
+	        h1 {
+	            position: absolute;
+	            top: 5%;
+	            width: 100%;
+	            text-align: center;
+	            color: #888;
+	            font-size: 16px;
+	            font-weight: 300;
+	            letter-spacing: 1px;
+	            margin: 0;
+	            z-index: 10;
+	            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+	        }
+	        /* 底部文字样式 */
+	        .footer {
+	            position: absolute;
+	            bottom: 3%;
+	            width: 100%;
+	            text-align: center;
+	            color: #444;
+	            font-size: 12px;
+	            z-index: 10;
+	        }
+	        /* === 2. 外层容器：负责缩放 === */
+	        .scale-wrapper {
+	            /* 缩放中心点设为屏幕中心 */
+	            transform-origin: center center;
+	            /* 关键：display: inline-block 让容器仅包裹时钟内容，不撑满全屏 */
+	            display: inline-block;
+	        }
+	        /* === 3. 内层容器：负责翻页动画 === */
+	        .anim-wrapper {
+	            display: flex;
+	            align-items: center;
+	            justify-content: center;
+	        }
+	        /* 强制隐藏标签 */
+	        .flip-clock-label {
+	            display: none !important;
+	        }
+	        /* 调整间隔符样式 */
+	        .flip-clock-divider {
+	            height: 100%;
+	            width: 15px !important; 
+	        }
+	        .flip-clock-dot {
+	            background-color: #444;
+	            width: 12px;
+	            height: 12px;
+	            left: 1.5px;
+	        }
+	        .flip-clock-dot.top { top: 35%; }
+	        .flip-clock-dot.bottom { bottom: 35%; }
+	        /* === 修复：禁止单个数字内部动画 === */
+	        .flip-clock-card .flip-clock-top, 
+	        .flip-clock-card .flip-clock-bottom, 
+	        .flip-clock-card .flip-clock-flap,
+	        .flip-clock-card .flip-clock-flap .top, 
+	        .flip-clock-card .flip-clock-flap .bottom,
+	        .flip-clock-card .flip-clock-leaf {
+	            transition: none !important;
+	            animation: none !important;
+	        }
+	        /* === 整体翻页动画 === */
+	        @keyframes flipInEffect {
+	            0% {
+	                transform: perspective(1000px) rotateX(-90deg);
+	                opacity: 0;
+	            }
+	            100% {
+	                transform: perspective(1000px) rotateX(0deg);
+	                opacity: 1;
+	            }
+	        }
+	        .animate-flip-in {
+	            animation: flipInEffect 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+	        }
+	        /* === 手机横屏适配 === */
+	        @media screen and (orientation: landscape) {
+	            h1, .footer {
+	                display: none !important;
+	                opacity: 0;
+	            }
+	        }
+	    </style>
+	</head>
+	<body>
+	    <h1>BTC / USD</h1>
+	    <!-- 双层结构 -->
+	    <div class="scale-wrapper">
+	        <div class="anim-wrapper">
+	            <div class="clock" style="margin: 0;"></div>
+	        </div>
+	    </div>
+	    <div class="footer">每分钟自动刷新</div>
+	    <!-- 引入 jQuery 和 FlipClock JS -->
+	    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	    <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
+	    <script>
+	        $(document).ready(function() {
+	            var clock = null;
+		    var $clockContainer = $('.clock');
+	            var $animWrapper = $('.anim-wrapper'); 
+	            var $scaleWrapper = $('.scale-wrapper');
+	            // 自动缩放函数 (统一逻辑：横竖屏都完全适配)
+	            function autoScaleClock() {
+	                var isLandscape = window.innerWidth > window.innerHeight;
+	                var scaleValue = 1;
+	                // 获取时钟当前的实际像素尺寸
+	                var currentHeight = $clockContainer.height();
+	                var currentWidth = $clockContainer.width();
+	                // 确保尺寸已加载
+	                if (currentHeight > 0 && currentWidth > 0) {
+	                    // 设定目标占用比例：横屏占满 95%，竖屏占满 80%
+	                    // 宽度统一占满 95% (防止溢出屏幕)
+	                    var targetHeight = isLandscape ? (window.innerHeight * 0.95) : (window.innerHeight * 0.8);
+	                    var targetWidth = window.innerWidth * 0.95;
+	                    // 1. 基于高度计算缩放
+	                    var scaleByHeight = targetHeight / currentHeight;
+	                    // 2. 基于宽度计算缩放
+	                    var scaleByWidth = targetWidth / currentWidth;
+	                    // 3. 取最小值 (Math.min)，保证不溢出屏幕，且完整显示所有数字
+	                    scaleValue = Math.min(scaleByHeight, scaleByWidth);
+	                    console.log(isLandscape ? "横屏" : "竖屏", "缩放比例:", scaleValue.toFixed(2));
+	                }
+	                $scaleWrapper.css('transform', 'scale(' + scaleValue + ')');
+	            }
+	            // 渲染时钟
+	            function renderClock(priceValue) {
+	                var targetPrice = Math.floor(priceValue);
+	                console.log('正在渲染价格:', targetPrice);
+	                // 1. 清理旧时钟
+	                if (clock) {
+	                    try {
+	                        clock.stop();
+	                        clock.destroy();
+	                    } catch(e) {}
+	                    $clockContainer.empty(); 
+	                }
+	                // 2. 准备动画
+	                $animWrapper.removeClass('animate-flip-in');
+	                void $animWrapper[0].offsetWidth; 
+	                // 3. 创建新时钟
+	                clock = $clockContainer.FlipClock(targetPrice, {
+	                    clockFace: 'Counter',
+	                    autoStart: false
+	                });
+	                // 4. 执行翻页动画
+	                $animWrapper.addClass('animate-flip-in');
+	                // 5. 立即计算缩放，并延时再次确认（确保动画期间不错位）
+	                autoScaleClock();
+	                setTimeout(autoScaleClock, 650); 
+	            }
+	            // 获取价格
+	            function fetchBTCPrice() {
+	                $.ajax({
+	                    url: 'https://api.binance.me/api/v3/ticker/price?symbol=BTCUSDT',
+	                    type: 'GET',
+	                    dataType: 'json',
+	                    success: function(data) {
+	                        var price = parseFloat(data.price);
+	                        renderClock(price);
+	                    },
+	                    error: function(error) {
+	                        console.log('API Error:', error);
+	                    }
+	                });
+	            }
+	            // 初始化
+	            fetchBTCPrice();
+	            // 监听窗口大小变化
+	            $(window).on('resize', autoScaleClock);
+	            // 定时器
+	            setInterval(fetchBTCPrice, 60000);
+	        });
+	    </script>
+	</body>
+	</html>
