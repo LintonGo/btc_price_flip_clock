@@ -25,10 +25,10 @@
     页面加载后会自动请求 API 并显示当前的 BTC 价格。
 ## ⚙️ 自定义配置
 如果你需要修改交易对（如显示 ETH）或调整刷新频率，可以编辑 `<script>` 标签内的代码：
-**1. 修改交易对**
+- **1. 修改交易对**
 找到 `fetchBTCPrice` 函数中的 `url` 参数：
     url: 'https://api.binance.me/api/v3/ticker/price?symbol=ETHUSDT', // 修改为其他币种
-**2. 修改刷新时间**
+- **2. 修改刷新时间**
 找到代码底部的 `setInterval`：
     setInterval(fetchBTCPrice, 30000); // 修改为 30000 表示每 30 秒刷新一次
 ## 📝 核心实现逻辑
